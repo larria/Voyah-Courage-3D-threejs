@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { loadNpz } from './npz.js';
+import { installLoadingGuard, setupNavigation, button, pressed, reducedMotion } from './ui.js';
+
+const loadingGuard = installLoadingGuard();
+setupNavigation();
 
 /* =========================================================
  * 全新岚图知音 · three.js 交互展示
@@ -24,7 +28,7 @@ const PAINTS = [
 const app = document.getElementById('app');
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-renderer.setSize(innerWidth, innerHeight);
+renderer.setSize(app.clientWidth, app.clientHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 renderer.localClippingEnabled = true;   // 车窗下降时裁剪门框线以下的玻璃
@@ -36,7 +40,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf5f6f8);
 scene.fog = new THREE.Fog(0xf5f6f8, 30, 80);
 
-const camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 0.1, 200);
+const camera = new THREE.PerspectiveCamera(38, app.clientWidth / app.clientHeight, 0.1, 200);
 camera.position.set(-8.5, 4.2, 9.5);
 
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -162,6 +166,7 @@ const FALLBACK = new THREE.MeshStandardMaterial({ color: 0x606874, roughness: 0.
 const assetBase = import.meta.env.BASE_URL;
 const npz = await loadNpz(`${assetBase}meshes.npz`);
 const sceneResp = await fetch(`${assetBase}scene.json`);
+if (!sceneResp.ok) throw new Error(`Scene loading failed: ${sceneResp.status}`);
 const sceneData = await sceneResp.json();
 
 const loaderBar = document.getElementById('load-bar');
@@ -468,195 +473,56 @@ const dashes = [];
  * UI
  * ========================================================= */
 const toastEl = document.getElementById('toast');
-let toastTimer = null;
-function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1600);
-}
-
-// --- 颜色 ---
-const colorsEl = document.getElementById('colors');
-let activePaint = 0;
-PAINTS.forEach((p, i) => {
-  const chip = document.createElement('div');
-  chip.className = 'color-chip' + (i === 0 ? ' active' : '');
-  chip.style.background = `radial-gradient(circle at 32% 30%, #fff3 0%, transparent 42%), #${p.color.toString(16).padStart(6, '0')}`;
-  chip.innerHTML = `<span class="name">${p.name}</span>`;
-  chip.onclick = () => {
-    activePaint = i;
-    document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
-    chip.classList.add('active');
-    applyPaint(p);
-    toast(`外观颜色 · ${p.name}`);
-  };
-  colorsEl.appendChild(chip);
-});
-
-// --- 内饰主题 (官方 interior: R旭日红 / P深海蓝 / Q皓月白) ---
+let toastTimer;
+function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800); }
 const INTERIORS = [
-  { code: 'R', name: '旭日红', leather: 0xd1c7b5, accent: 0x6e3238, red: 0x8c2630, belt: 0x6e2429 },
-  { code: 'P', name: '深海蓝', leather: 0x46596e, accent: 0x253b54, red: 0x28405e, belt: 0x24344a },
-  { code: 'Q', name: '皓月白', leather: 0xe2ddd4, accent: 0xb8b2a8, red: 0xa8a29a, belt: 0x8e8a82 },
+  { name: '旭日红', leather: 0xd1c7b5, accent: 0x6e3238, red: 0x8c2630 },
+  { name: '深海蓝', leather: 0x46596e, accent: 0x253b54, red: 0x28405e },
+  { name: '皓月白', leather: 0xe2ddd4, accent: 0xb8b2a8, red: 0xa8a29a },
 ];
-const interiorsEl = document.createElement('div');
-interiorsEl.className = 'btns';
-interiorsEl.style.marginTop = '10px';
-colorsEl.parentNode.insertBefore(interiorsEl, colorsEl.nextSibling);
-let activeInterior = 0;
-INTERIORS.forEach((it, i) => {
-  const b = mkBtn(interiorsEl, it.name, () => {
-    activeInterior = i;
-    interiorsEl.querySelectorAll('.btn').forEach(x => x.classList.remove('on'));
-    b.classList.add('on');
-    const l = matLibrary;
-    const fade = (mat, hex) => { const from = mat.color.clone(), to = new THREE.Color(hex); const t0 = performance.now();
-      (function step(now){ const t = clamp((now - t0) / 400, 0, 1); mat.color.copy(from).lerp(to, t); if (t < 1) requestAnimationFrame(step); })(performance.now()); };
-    fade(l['内饰_浅色皮革 1'], it.leather);
-    fade(l['内饰_亮色'], it.leather);
-    fade(l['内饰_皮革拼色 1'], it.accent);
-    fade(l['内飾_red'], it.red);
-    // 安全带固定深灰,融入 B 柱内饰
-    // (官方安全带几何为 B 柱卷绕带,随主题变色会显得突兀)
-    fade(l['内饰_皮革色塑料紋理'], it.leather);
-    toast(`内饰 · ${it.name}`);
-  }, 'small');
-  if (i === 0) {
-    b.classList.add('on');
-    matLibrary['内饰_亮色'].color.setHex(it.leather);
-    matLibrary['内饰_皮革色塑料紋理'].color.setHex(it.leather);
-  }
+const WHEELS = [{ name: '低风阻轮毂', mesh: 'Trie_A' }, { name: '运动轮毂', mesh: 'Trie_B' }];
+let activePaint = 0, activeInterior = 0, activeWheel = 0, lightsOn = true, activeView = '前侧';
+const paintBtns = [], interiorBtns = [], wheelBtns = [], doorBtns = {}, winBtns = {}, viewBtns = {};
+const colorFrames = new Map();
+function fade(mat, hex, duration = 400) {
+  cancelAnimationFrame(colorFrames.get(mat));
+  const from = mat.color.clone(), to = new THREE.Color(hex), start = performance.now();
+  if (reducedMotion()) { mat.color.copy(to); colorFrames.delete(mat); return; }
+  function step(now) { const t = clamp((now - start) / duration, 0, 1); mat.color.copy(from).lerp(to, t); if (t < 1) colorFrames.set(mat, requestAnimationFrame(step)); else colorFrames.delete(mat); }
+  colorFrames.set(mat, requestAnimationFrame(step));
+}
+const action = fn => () => { fn(); syncUI(); };
+PAINTS.forEach((paint, i) => {
+  const b = button(document.getElementById('colors'), paint.name, action(() => { activePaint = i; fade(matLibrary['外观_车漆'], paint.color, 450); toast(`外观颜色 · ${paint.name}`); }));
+  b.className = 'color-chip'; const swatch = document.createElement('span'); swatch.className = 'swatch'; swatch.style.background = `radial-gradient(circle at 30% 25%, #ffffff55, transparent 65%), #${paint.color.toString(16).padStart(6, '0')}`; swatch.setAttribute('aria-hidden', 'true'); b.prepend(swatch); paintBtns.push(b);
 });
-
-// --- 轮毂 (官方 setWheelType: Trie_A/Trie_B 两款, 四轮同步切换) ---
-let activeWheel = 0;
-const WHEELS = [
-  { name: '低风阻轮毂', mesh: 'Trie_A' },
-  { name: '运动轮毂', mesh: 'Trie_B' },
-];
-const wheelsEl = document.createElement('div');
-wheelsEl.className = 'btns';
-wheelsEl.style.marginTop = '10px';
-colorsEl.parentNode.insertBefore(wheelsEl, interiorsEl.nextSibling);
-WHEELS.forEach((w, i) => {
-  const b = mkBtn(wheelsEl, w.name, () => {
-    activeWheel = i;
-    wheelsEl.querySelectorAll('.btn').forEach(x => x.classList.remove('on'));
-    b.classList.add('on');
-    for (const wl of wheels) {
-      wl.obj.visible = wl.mesh === w.mesh;
-    }
-    toast(`轮毂 · ${w.name}`);
-  }, 'small');
-  if (i === 0) b.classList.add('on');
-});
-// 初始: 只显示 Trie_A
+INTERIORS.forEach((it, i) => interiorBtns.push(button(document.getElementById('interiors'), it.name, action(() => {
+  activeInterior = i;
+  for (const [name, hex] of [['内饰_浅色皮革 1', it.leather], ['内饰_亮色', it.leather], ['内饰_皮革拼色 1', it.accent], ['内飾_red', it.red], ['内饰_皮革色塑料紋理', it.leather]]) fade(matLibrary[name], hex);
+  toast(`内饰 · ${it.name}`);
+}))));
+matLibrary['内饰_亮色'].color.setHex(INTERIORS[0].leather);
+matLibrary['内饰_皮革色塑料紋理'].color.setHex(INTERIORS[0].leather);
+WHEELS.forEach((w, i) => wheelBtns.push(button(document.getElementById('wheels'), w.name, action(() => { activeWheel = i; for (const wl of wheels) wl.obj.visible = wl.mesh === w.mesh; toast(`轮毂 · ${w.name}`); }))));
 for (const wl of wheels) wl.obj.visible = wl.mesh === 'Trie_A';
-
-function applyPaint(p) {
-  const mat = matLibrary['外观_车漆'];
-  const target = new THREE.Color(p.color);
-  // 渐变过渡
-  const from = mat.color.clone();
-  const t0 = performance.now();
-  function step(now) {
-    const t = clamp((now - t0) / 450, 0, 1);
-    mat.color.copy(from).lerp(target, t);
-    if (t < 1) requestAnimationFrame(step);
-  }
-  requestAnimationFrame(step);
-}
-
-// --- 按钮 ---
-function mkBtn(parent, label, onclick, cls = '') {
-  const b = document.createElement('button');
-  b.className = 'btn ' + cls;
-  b.textContent = label;
-  b.onclick = onclick;
-  parent.appendChild(b);
-  return b;
-}
-
+function aggregate(state) { const values = Object.values(state); return values.every(v => v > 0.5) ? true : values.some(v => v > 0.5) ? 'mixed' : false; }
 const doorsEl = document.getElementById('doors');
-const btnOpenAll = mkBtn(doorsEl, '全部开门', () => {
-  const target = !(doorState.LF > 0.5) ? 1 : 0;
-  Object.keys(doorState).forEach(k => doorState[k] = target);
-  updateDoorBtns();
-});
-const btnTrunk = mkBtn(doorsEl, '后备箱', () => {
-  trunkState.v = trunkState.v > 0.5 ? 0 : 1;
-  btnTrunk.classList.toggle('on', trunkState.v > 0.5);
-});
-const btnWinAll = mkBtn(doorsEl, '全部车窗', () => {
-  const target = !(windowState.LF > 0.5) ? 1 : 0;
-  Object.keys(windowState).forEach(k => windowState[k] = target);
-  updateWinBtns();
-});
-const btnReset = mkBtn(doorsEl, '复位', () => {
-  Object.keys(doorState).forEach(k => doorState[k] = 0);
-  Object.keys(windowState).forEach(k => windowState[k] = 0);
-  trunkState.v = 0;
-  updateAllBtns();
-  resetLights();
-  toast('已复位');
-});
-
-// 单门按钮
-mkBtn(doorsEl, '左前门', () => toggleDoor('LF'), 'small');
-mkBtn(doorsEl, '右前门', () => toggleDoor('RF'), 'small');
-mkBtn(doorsEl, '左后门', () => toggleDoor('LB'), 'small');
-mkBtn(doorsEl, '右后门', () => toggleDoor('RB'), 'small');
-mkBtn(doorsEl, '左前窗', () => toggleWin('LF'), 'small');
-mkBtn(doorsEl, '右前窗', () => toggleWin('RF'), 'small');
-mkBtn(doorsEl, '左后窗', () => toggleWin('LB'), 'small');
-mkBtn(doorsEl, '右后窗', () => toggleWin('RB'), 'small');
-
-function toggleDoor(k) { doorState[k] = doorState[k] > 0.5 ? 0 : 1; updateDoorBtns(); }
-function toggleWin(k) { windowState[k] = windowState[k] > 0.5 ? 0 : 1; updateWinBtns(); }
-function updateDoorBtns() { btnOpenAll.classList.toggle('on', doorState.LF > 0.5); }
-function updateWinBtns() { btnWinAll.classList.toggle('on', windowState.LF > 0.5); }
-function updateAllBtns() { updateDoorBtns(); updateWinBtns(); btnTrunk.classList.remove('on'); }
-// 灯光复位恢复默认点亮
-function resetLights() {
-  lightsOn = true;
-  btnLights.classList.add('on');
-  for (const mn of emissiveTargets.headlight) matLibrary[mn].emissiveIntensity = LIGHT_ON[mn];
-  for (const mn of emissiveTargets.taillight) matLibrary[mn].emissiveIntensity = LIGHT_ON[mn];
+function openingGroup(title, state, buttons, suffix) {
+  const group = document.createElement('div'); group.className = 'opening-group'; const heading = document.createElement('h4'); heading.textContent = title; group.appendChild(heading); doorsEl.appendChild(group);
+  const all = button(group, `全部${suffix === '门' ? '车门' : '车窗'}`, action(() => { const target = aggregate(state) === true ? 0 : 1; Object.keys(state).forEach(k => state[k] = target); }));
+  const grid = document.createElement('div'); grid.className = 'opening-grid'; group.appendChild(grid);
+  for (const [key, label] of [['LF', '左前'], ['RF', '右前'], ['LB', '左后'], ['RB', '右后']]) buttons[key] = button(grid, label + suffix, action(() => { state[key] = state[key] > 0.5 ? 0 : 1; }));
+  return all;
 }
-
-// --- 灯光/行驶 (官网默认: 灯幕/日行灯/尾灯常亮, 可开关) ---
-const driveEl = document.getElementById('drive');
-let lightsOn = true, drlOn = true;   // 官方 _LightColor2=1 默认点亮
+const btnOpenAll = openingGroup('车门开合', doorState, doorBtns, '门');
+const btnWinAll = openingGroup('车窗升降', windowState, winBtns, '窗');
+const btnTrunk = button(doorsEl, '后备箱', action(() => { trunkState.v = trunkState.v > 0.5 ? 0 : 1; }), 'close-all');
+button(doorsEl, '全部关闭', action(() => { Object.keys(doorState).forEach(k => doorState[k] = 0); Object.keys(windowState).forEach(k => windowState[k] = 0); trunkState.v = 0; toast('门窗与尾门已关闭'); }), 'close-all');
 const LIGHT_ON = Object.fromEntries([...new Set([...emissiveTargets.headlight, ...emissiveTargets.taillight])].map(name => [name, matLibrary[name].emissiveIntensity]));
-const LIGHT_OFF = { headlight: 0, taillight: 0, drl: 0 };
-const btnLights = mkBtn(driveEl, '灯光', () => {
-  lightsOn = !lightsOn;
-  btnLights.classList.toggle('on', lightsOn);
-  for (const mn of emissiveTargets.headlight) matLibrary[mn].emissiveIntensity = lightsOn ? LIGHT_ON[mn] : 0;
-  for (const mn of emissiveTargets.taillight) matLibrary[mn].emissiveIntensity = lightsOn ? LIGHT_ON[mn] : 0;
-  toast(lightsOn ? '灯光已开启' : '灯光已关闭');
-});
-btnLights.classList.add('on');
-const btnDrive = mkBtn(driveEl, '行驶', () => {
-  driving = !driving;
-  btnDrive.classList.toggle('on', driving);
-  if (driving && !lightsOn) btnLights.click();
-  toast(driving ? '行驶中 · 拖动鼠标可环绕视角' : '已停车');
-});
-
-// 速度滑条
-const speedRow = document.createElement('div');
-speedRow.className = 'speed-row';
-speedRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-top:10px;width:100%';
-speedRow.innerHTML = `<span style="color:#7f8ea3;font-size:11px;letter-spacing:2px">车速</span><input type="range" min="0.2" max="3" step="0.1" value="1" id="speed"><span class="val" id="speed-val">1.0x</span>`;
-driveEl.appendChild(speedRow);
-const speedInput = speedRow.querySelector('#speed');
-const speedVal = speedRow.querySelector('#speed-val');
-speedInput.oninput = () => { driveSpeed = parseFloat(speedInput.value); speedVal.textContent = driveSpeed.toFixed(1) + 'x'; };
-
-// --- 视角 ---
-const viewsEl = document.getElementById('views');
+function applyLights() { for (const mn of [...emissiveTargets.headlight, ...emissiveTargets.taillight]) matLibrary[mn].emissiveIntensity = lightsOn ? LIGHT_ON[mn] : 0; }
+const btnLights = button(document.getElementById('drive'), '车辆灯光', action(() => { lightsOn = !lightsOn; applyLights(); toast(lightsOn ? '灯光已开启' : '灯光已关闭'); }));
+const btnDrive = button(document.getElementById('drive'), '模拟行驶', action(() => { driving = !driving; if (driving) { lightsOn = true; applyLights(); } toast(driving ? '行驶动画已开启' : '已停车'); }));
+document.getElementById('speed').oninput = event => { driveSpeed = Number(event.target.value); syncUI(); };
 const VIEWS = {
   '前侧': { pos: [-8.5, 4.2, 9.5], tgt: [0, 1, 0] },
   '正前': { pos: [-13, 2.2, 0.01], tgt: [0, 1.1, 0] },
@@ -666,20 +532,30 @@ const VIEWS = {
   '内饰': { pos: [-0.35, 1.45, 0], tgt: [-1.35, 1.1, 0] },
 };
 let viewTween = null;
-for (const [name, v] of Object.entries(VIEWS)) {
-  mkBtn(viewsEl, name, () => {
-    controls.minDistance = name === '内饰' ? 0.4 : 4.5;
-    viewTween = {
-      t: 0,
-      fromP: camera.position.clone(), toP: new THREE.Vector3(...v.pos),
-      fromT: controls.target.clone(), toT: new THREE.Vector3(...v.tgt),
-    };
-    toast(`视角 · ${name}`);
-  }, 'small');
+function viewPosition(v, interior) {
+  const target = new THREE.Vector3(...v.tgt), position = new THREE.Vector3(...v.pos);
+  if (!interior) position.sub(target).multiplyScalar(0.72 * Math.max(1, 1 / Math.max(camera.aspect, 0.55))).add(target);
+  return position;
 }
-
+function selectView(name, immediate = false) {
+  activeView = name; const v = VIEWS[name]; controls.minDistance = name === '内饰' ? 0.4 : 4.5;
+  const toP = viewPosition(v, name === '内饰'), toT = new THREE.Vector3(...v.tgt);
+  if (immediate || reducedMotion()) { viewTween = null; camera.position.copy(toP); controls.target.copy(toT); controls.update(); }
+  else viewTween = { t: 0, fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT };
+}
+for (const name of Object.keys(VIEWS)) viewBtns[name] = button(document.getElementById('views'), name, action(() => { selectView(name); toast(`视角 · ${name}`); }));
+controls.addEventListener('start', () => { viewTween = null; activeView = null; syncUI(); });
+function syncUI() {
+  paintBtns.forEach((b, i) => pressed(b, i === activePaint)); interiorBtns.forEach((b, i) => pressed(b, i === activeInterior)); wheelBtns.forEach((b, i) => pressed(b, i === activeWheel));
+  for (const key of Object.keys(doorBtns)) { pressed(doorBtns[key], doorState[key] > 0.5); pressed(winBtns[key], windowState[key] > 0.5); }
+  pressed(btnOpenAll, aggregate(doorState)); pressed(btnWinAll, aggregate(windowState)); pressed(btnTrunk, trunkState.v > 0.5); pressed(btnLights, lightsOn); pressed(btnDrive, driving);
+  for (const [name, b] of Object.entries(viewBtns)) pressed(b, name === activeView);
+  document.getElementById('paint-name').textContent = PAINTS[activePaint].name; document.getElementById('paint-summary').textContent = PAINTS[activePaint].name;
+  document.getElementById('speed-val').textContent = driveSpeed.toFixed(1) + '×';
+}
+syncUI();
 setProgress(1);
-setTimeout(() => document.getElementById('loader').classList.add('hide'), 400);
+loadingGuard.ready();
 
 /* =========================================================
  * 渲染循环
@@ -792,8 +668,20 @@ function animate() {
 const trunkAnim = { cur: 0 };
 animate();
 
-addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight;
+let previousAspect = camera.aspect;
+function resizeStage() {
+  const width = app.clientWidth, height = app.clientHeight;
+  if (!width || !height) return;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+  renderer.setSize(width, height);
+  if (activeView) selectView(activeView, true);
+  else if (controls.minDistance >= 4.5) {
+    const oldScale = Math.max(1, 1 / Math.max(previousAspect, 0.55));
+    const newScale = Math.max(1, 1 / Math.max(camera.aspect, 0.55));
+    camera.position.sub(controls.target).multiplyScalar(newScale / oldScale).add(controls.target);
+  }
+  previousAspect = camera.aspect;
+}
+new ResizeObserver(resizeStage).observe(app);
+resizeStage();
