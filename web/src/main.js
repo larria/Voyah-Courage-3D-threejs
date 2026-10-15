@@ -109,10 +109,10 @@ function makeMaterials(paintColor) {
     '外观_日行灯': new THREE.MeshStandardMaterial({ color: 0x373737, emissive: 0xffffff, emissiveIntensity: 2.0, roughness: 0.22, metalness: 0.3 }),
     '外观_日行灯转向灯': new THREE.MeshStandardMaterial({ color: 0x373737, emissive: 0xffffff, emissiveIntensity: 2.0, roughness: 0.2 }),
     '外观_转向灯示廓灯': new THREE.MeshStandardMaterial({ color: 0x878787, emissive: 0xff6600, emissiveIntensity: 0.0, roughness: 0.2 }),
-    // 尾灯: BaseColor(1,0,0) Emission(6.06,3.27,0) 橙红高亮 默认亮
-    '外观_尾灯': new THREE.MeshStandardMaterial({ color: 0xff2a00, emissive: 0xff6b00, emissiveIntensity: 1.4, roughness: 0.25 }),
-    // 尾示廓灯: Emission(5.99,0,0) 纯红 默认亮
-    '外观_尾灯示廓灯': new THREE.MeshStandardMaterial({ color: 0x900800, emissive: 0xff1a00, emissiveIntensity: 1.6, roughness: 0.25 }),
+    // 高位灯/下部红色灯件: 按参考图校正为红色,避免旧橙色发光值在色调映射后泛黄。
+    '外观_尾灯': new THREE.MeshStandardMaterial({ color: 0x980008, emissive: 0xff0000, emissiveIntensity: 1.4, toneMapped: false, roughness: 0.25 }),
+    // 中部贯穿尾灯保持相同红色光谱,关灯仍保留深红灯体。
+    '外观_尾灯示廓灯': new THREE.MeshStandardMaterial({ color: 0x900008, emissive: 0xff0000, emissiveIntensity: 1.6, toneMapped: false, roughness: 0.25 }),
     '外观_尾灯Logo': new THREE.MeshStandardMaterial({ color: 0xbfbfbf, emissive: 0xff3344, emissiveIntensity: 0.8, roughness: 0.3 }),
     // 玻璃 — 官方 BaseColor + 反射 (IOR 1.52 / Smoothness 1.0)。
     // 官网视觉: 前排玻璃透明度高(反射天空为主,直视通透),后排隐私深色
