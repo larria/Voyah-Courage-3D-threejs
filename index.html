@@ -2,47 +2,34 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f8f6f2" />
   <title>全新岚图知音 · 3D 交互展示</title>
-  <style>*{box-sizing:border-box;-webkit-user-select:none;user-select:none;margin:0;padding:0}html,body{background:#f5f6f8;width:100%;height:100%;font-family:PingFang SC,Microsoft YaHei,sans-serif;overflow:hidden}#app{position:absolute;inset:0}canvas{display:block}#loader{z-index:100;background:radial-gradient(#fff 0%,#eef0f4 70%);flex-direction:column;justify-content:center;align-items:center;transition:opacity .6s;display:flex;position:absolute;inset:0}#loader.hide{opacity:0;pointer-events:none}#loader .title{color:#1a2233;letter-spacing:6px;margin-bottom:8px;font-size:28px}#loader .sub{color:#98a1b3;letter-spacing:2px;margin-bottom:32px;font-size:13px}#loader .bar-wrap{background:#dde1e8;border-radius:2px;width:260px;height:3px;overflow:hidden}#loader .bar{background:linear-gradient(90deg,#2b5ce6,#4f8cff);width:0%;height:100%;transition:width .3s}#loader .pct{color:#4f8cff;font-variant-numeric:tabular-nums;margin-top:10px;font-size:12px}#title-bar{z-index:10;pointer-events:none;background:linear-gradient(#ffffffe6,#0000);align-items:baseline;gap:14px;padding:22px 28px;display:flex;position:absolute;top:0;left:0;right:0}#title-bar .brand{color:#1a2233;letter-spacing:3px;font-size:20px;font-weight:600}#title-bar .model{color:#8b93a4;letter-spacing:1px;font-size:13px}#panel{z-index:10;padding:14px 16px calc(14px + env(safe-area-inset-bottom));background:linear-gradient(#0000,#ffffffd9 40%,#fffe);position:absolute;bottom:0;left:0;right:0}.section{margin-bottom:12px}.section:last-child{margin-bottom:0}.section-title{color:#9aa3b2;letter-spacing:2px;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;display:flex}.section-title:after{content:"";background:#1a223310;flex:1;height:1px}.colors{flex-wrap:wrap;gap:10px;display:flex}.color-chip{cursor:pointer;border:2px solid #fff;border-radius:50%;width:38px;height:38px;transition:transform .15s,border-color .2s,box-shadow .2s;position:relative;box-shadow:0 1px 4px #1a223322}.color-chip:hover{transform:scale(1.12)}.color-chip.active{border-color:#2b5ce6;box-shadow:0 0 0 2px #2b5ce633,0 2px 8px #1a223322}.color-chip .name{color:#6b7686;white-space:nowrap;opacity:0;pointer-events:none;font-size:10px;transition:opacity .15s;position:absolute;top:44px;left:50%;transform:translate(-50%)}.color-chip:hover .name,.color-chip.active .name{opacity:1}.btns{flex-wrap:wrap;gap:8px;display:flex}.btn{color:#3d4655;cursor:pointer;white-space:nowrap;background:#fff;border:1px solid #d8dde5;border-radius:18px;padding:8px 14px;font-size:12px;transition:all .18s;box-shadow:0 1px 3px #1a223310}.btn:hover{color:#1a2233;border-color:#b9c2d0}.btn.on{color:#fff;background:linear-gradient(90deg,#2b5ce6,#4f8cff);border-color:#0000;box-shadow:0 2px 10px #2b5ce644}.btn.small{border-radius:14px;padding:6px 10px;font-size:11px}.btn[disabled]{opacity:.35;pointer-events:none}.view-btns{gap:8px;display:flex}.speed-row{align-items:center;gap:10px;display:flex}.speed-row input[type=range]{accent-color:#2b5ce6;flex:1;height:3px}.speed-row .val{color:#2b5ce6;text-align:right;font-variant-numeric:tabular-nums;min-width:52px;font-size:12px}#toast{color:#fff;letter-spacing:1px;opacity:0;z-index:50;pointer-events:none;background:#1a2233e6;border-radius:18px;padding:8px 18px;font-size:12px;transition:all .3s;position:absolute;top:76px;left:50%;transform:translate(-50%)translateY(-8px);box-shadow:0 4px 16px #1a223333}#toast.show{opacity:1;transform:translate(-50%)translateY(0)}#hint{color:#b6bdcb;writing-mode:vertical-rl;letter-spacing:4px;pointer-events:none;z-index:5;font-size:11px;position:absolute;bottom:50%;right:16px;transform:translateY(50%)}@media (width<=640px){#title-bar{padding:16px 18px}#title-bar .brand{font-size:17px}.color-chip{width:32px;height:32px}.btn{padding:7px 11px;font-size:11px}#panel{max-height:46%;overflow-y:auto}}</style>
-  <script type="module" crossorigin src="/Voyah-Courage-3D-threejs/assets/index-CXyHwn3E.js"></script>
+  <script type="module" crossorigin src="/Voyah-Courage-3D-threejs/assets/index-BZSjBJwP.js"></script>
+  <link rel="stylesheet" crossorigin href="/Voyah-Courage-3D-threejs/assets/index-BWjJqhWM.css">
 </head>
 <body>
-  <div id="app"></div>
-
-  <div id="loader">
-    <div class="title">岚图知音</div>
-    <div class="sub">VOYAH ZHIYIN · 3D CONFIGURATOR</div>
-    <div class="bar-wrap"><div class="bar" id="load-bar"></div></div>
-    <div class="pct" id="load-pct">0%</div>
-  </div>
-
-  <div id="title-bar">
-    <span class="brand">全新岚图知音</span>
-    <span class="model">超空间华系纯电SUV · 4810×1900×1636mm · three.js 重制版</span>
-  </div>
-
-  <div id="toast"></div>
-  <div id="hint">拖动旋转 · 滚轮缩放 · 右键平移</div>
-
-  <div id="panel">
-    <div class="section">
-      <div class="section-title">外观颜色</div>
-      <div class="colors" id="colors"></div>
-    </div>
-    <div class="section">
-      <div class="section-title">车门 / 车窗 / 后备箱</div>
-      <div class="btns" id="doors"></div>
-    </div>
-    <div class="section">
-      <div class="section-title">灯光 / 行驶</div>
-      <div class="btns" id="drive"></div>
-    </div>
-    <div class="section">
-      <div class="section-title">视角</div>
-      <div class="view-btns" id="views"></div>
-    </div>
-  </div>
-
+  <header class="header"><div><span class="eyebrow">VOYAH · DIGITAL SHOWROOM</span><h1>全新岚图知音</h1></div><span class="edition">3D 交互展示 <span>非官方重制</span></span></header>
+  <main class="workspace">
+    <section class="stage" aria-label="车辆三维展台">
+      <div id="app" aria-label="拖动旋转车辆，滚轮或双指缩放"></div>
+      <div class="stage-caption"><span class="eyebrow">MEET YOUR NEXT JOURNEY</span><p>让每一面，都与你共鸣。</p></div>
+      <div class="stage-meta"><span id="paint-summary">香槟金</span><span>纯电 SUV · 4810 × 1900 × 1636 mm</span></div>
+      <div id="loader" role="status" aria-live="polite"><span class="eyebrow">PREPARING YOUR VOYAH</span><h2 id="load-title">正在准备展车</h2><p id="load-detail">模型与材质加载中，请稍候</p><div class="bar-wrap"><div id="load-bar"></div></div><span id="load-pct">0%</span><button id="retry" hidden type="button">重新加载</button></div>
+      <div class="camera-dock"><span class="dock-label">探索视角</span><div id="views" class="view-btns"></div><p>拖动旋转 · 双指 / 滚轮缩放</p></div>
+      <div id="toast" role="status" aria-live="polite"></div>
+    </section>
+    <aside id="panel" class="config-panel" aria-label="车辆配置">
+      <button id="sheet-toggle" class="sheet-toggle" aria-expanded="true" aria-controls="panel-content" type="button">个性化你的知音 <span>收起</span></button>
+      <div class="panel-intro"><span class="eyebrow">MAKE IT YOURS</span><h2>你的知音，你的风格</h2><p>从色彩到细节，探索你的专属搭配。</p></div>
+      <div class="tabs" role="tablist" aria-label="配置类别"><button role="tab" id="tab-appearance" aria-controls="appearance" aria-selected="true" tabindex="0">外观搭配</button><button role="tab" id="tab-openings" aria-controls="openings" aria-selected="false" tabindex="-1">门窗开合</button><button role="tab" id="tab-experience" aria-controls="experience" aria-selected="false" tabindex="-1">动态体验</button></div>
+      <div id="panel-content" class="panel-content">
+        <section id="appearance" role="tabpanel" aria-labelledby="tab-appearance"><div class="section-heading"><h3>车身色彩</h3><span id="paint-name">香槟金</span></div><div id="colors" class="colors"></div><div class="section-heading"><h3>内饰主题</h3><span>细节里的温度</span></div><div id="interiors" class="choice-list"></div><div class="section-heading"><h3>轮毂样式</h3><span>四轮同步</span></div><div id="wheels" class="choice-list"></div><p class="note">色彩为三维视觉模拟，实际效果以实车为准。</p></section>
+        <section id="openings" role="tabpanel" aria-labelledby="tab-openings" hidden><div class="section-heading"><h3>自由开合</h3><span>四门 · 四窗 · 尾门</span></div><div id="doors"></div><p class="note">全部关闭仅作用于门窗与尾门，不改变你的配色、灯光与行驶状态。</p></section>
+        <section id="experience" role="tabpanel" aria-labelledby="tab-experience" hidden><div class="section-heading"><h3>静与动的表达</h3><span>沉浸探索</span></div><div id="drive" class="choice-list"></div><div class="speed-row"><label for="speed">行驶动画倍率</label><output id="speed-val" for="speed">1.0×</output><input disabled type="range" min="0.2" max="3" step="0.1" value="1" id="speed"><span>0.2×</span><span>3.0×</span></div><p class="note">倍率控制车轮与道路动画，并非真实车速。门窗开合节奏保持不变。</p></section>
+      </div>
+      <footer class="panel-footer"><span>VOYAH ZHIYIN</span><span>为每一次出发</span></footer>
+    </aside>
+  </main>
 </body>
 </html>
