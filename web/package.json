@@ -1,0 +1,20 @@
+{
+  "name": "zhiyin-3d-viewer",
+  "version": "1.0.0",
+  "description": "全新岚图知音 three.js 3D 交互展示",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "pako": "^3.0.2",
+    "three": "^0.170.0",
+    "vite": "^8.3.4"
+  }
+}

@@ -1,0 +1,11 @@
+node_modules/
+dist/
+unity-player/
+.DS_Store
+__pycache__/
+*.pyc
+*.log
+.env
+.env.*
+!.env.example
+.claude/

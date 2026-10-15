@@ -1,0 +1,15 @@
+{
+  "name": "voyah-courage-3d-threejs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "全新岚图知音 three.js 展示及双仓库发布工具",
+  "scripts": {
+    "dev": "npm --prefix web run dev",
+    "build": "npm --prefix web run build",
+    "preview": "npm --prefix web run preview",
+    "publish": "node scripts/publish.mjs"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}
