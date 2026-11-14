@@ -1,6 +1,6 @@
 {
   "name": "zhiyin-3d-viewer",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "全新岚图知音 three.js 3D 交互展示",
   "main": "index.js",
   "scripts": {

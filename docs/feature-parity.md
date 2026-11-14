@@ -1,4 +1,4 @@
-# 功能对齐记录 · v1.1.0
+# 功能对齐记录 · v1.1.1
 
 参考本地 `知音3d` 项目的实际实现（`components/car-player.js`、`charging-controls.js`、`mirror-controls.js`、`tools/direct-player.js` 和 `components/API.md`），在现有 three.js 展厅中补齐可展示的功能。参考项目是原始 Unity 播放器的封装；本项目重建交互和画面，不宣称两种引擎像素、动画时序或所有副作用完全一致。
 
@@ -27,3 +27,10 @@
 未把参考项目的实验命令全部照搬：门把手数组在该车型为空；`setCarseat` 只证明选装资源切换，不代表座椅调节；版本/选装组合、开场动画重播、独立轮转角和车标额外语义未充分验收。这些仍保留为未对齐范围。
 
 验证：`npm test` 检查后视镜反向/端点、充电状态与盖板姿态、独立灯组/闪烁恢复、非法开关参数。`verification/browser-check.py` 运行生产构建的桌面/手机按钮操作、模型点击、动画、画面差异、子路径、完整断网重载及等待确认的版本更新；JSON 结果保存为 `verification/browser-results.json`，截图在同目录且不提交。
+
+
+## v1.1.1 后视镜方向修正
+
+v1.1.0 在烘焙后的镜壳坐标系中误用了正 70°，导致左右镜壳向车外偏移。修正为局部 Z 轴负 70°；原有 3 秒 smoothstep、快速反向及开门联动保持不变。新回归测试读取真实 DOOR_HSJ 网格，检查两侧镜壳重心折叠后距车身中线缩小且向车后移动，展开后恢复原位，避免只验证旋转矩阵而漏掉物理方向。
+
+`verification/mirror-direction-check.py` 验收左右两侧画面、锁车/解锁、开门折叠、快速反向与重复命令，结果保存为 `verification/mirror-direction-results.json`。

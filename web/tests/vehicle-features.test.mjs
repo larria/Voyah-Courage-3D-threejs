@@ -3,9 +3,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createVehicleFeatures } from '../src/vehicle-features.js';
+import { loadNpz } from '../src/npz.js';
 
 const read = name => JSON.parse(readFileSync(new URL(`../public/${name}`, import.meta.url)));
 const scene = read('scene.json'), metadata = read('interactions.json');
+const npz = await loadNpz(`data:application/octet-stream;base64,${readFileSync(new URL('../public/meshes.npz', import.meta.url)).toString('base64')}`);
+const mirrorCenter = new THREE.Vector3();
+const mirrorVertices = npz.DOOR_HSJ_v;
+for (let i = 0; i < mirrorVertices.length; i += 3) mirrorCenter.add(new THREE.Vector3(...mirrorVertices.subarray(i, i + 3)));
+mirrorCenter.divideScalar(mirrorVertices.length / 3);
 const matrix = rows => new THREE.Matrix4().set(...rows.flat());
 const closeMatrix = (a, b) => assert.ok(a.elements.every((v, i) => Math.abs(v - b.elements[i]) < 1e-5));
 function fixture() {
@@ -35,9 +41,26 @@ test('mirrors use three-second reversible motion and restore both mirrored bases
   mirrors.forEach(i => closeMatrix(f.mirrorMatrix(i.obj), new THREE.Matrix4()));
   f.setMirrors(false); tick(3);
   for (const i of mirrors) {
-    const expected = i.obj.matrix.clone().multiply(new THREE.Matrix4().makeRotationZ(THREE.MathUtils.degToRad(70)));
-    closeMatrix(f.mirrorMatrix(i.obj).clone().multiply(i.obj.matrix), expected);
+    assert.ok(Math.abs(f.mirrorMatrix(i.obj).determinant() - 1) < 1e-5);
   }
+});
+
+test('both real mirror housings fold inward toward the body and rearward', () => {
+  const { features: f, instances, tick } = fixture();
+  const mirrors = instances.filter(i => i.mesh === 'DOOR_HSJ');
+  assert.equal(mirrors.length, 2);
+  const expanded = mirrors.map(i => mirrorCenter.clone().applyMatrix4(i.obj.matrix));
+  f.setMirrors(false); tick(3.1);
+  mirrors.forEach((i, index) => {
+    const folded = mirrorCenter.clone().applyMatrix4(i.obj.matrix).applyMatrix4(f.mirrorMatrix(i.obj));
+    assert.ok(Math.abs(folded.z) < Math.abs(expanded[index].z) - 0.05, `${i.path}: mirror must move inward`);
+    assert.ok(folded.x > expanded[index].x + 0.01, `${i.path}: mirror must move toward the rear`);
+  });
+  f.setMirrors(true); tick(3.1);
+  mirrors.forEach((i, index) => {
+    const reopened = mirrorCenter.clone().applyMatrix4(i.obj.matrix).applyMatrix4(f.mirrorMatrix(i.obj));
+    assert.ok(reopened.distanceTo(expanded[index]) < 1e-6);
+  });
 });
 
 test('charging has separate lid, cable and flow; stopping preserves plug and open pose', () => {

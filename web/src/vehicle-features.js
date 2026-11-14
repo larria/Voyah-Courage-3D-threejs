@@ -124,8 +124,9 @@ export function createVehicleFeatures({ instances, metadata, materials, onChange
     update(dt) {
       mirrorPhase = advance(mirrorPhase, state.mirrorsExpanded ? 0 : 1, dt / 3);
       const ease = mirrorPhase * mirrorPhase * (3 - 2 * mirrorPhase);
-      // Reference mirror fix: local Unity Z = -70°; right-handed Z = +70°.
-      rotation.makeRotationZ(THREE.MathUtils.degToRad(70) * ease);
+      // The baked mesh frame already includes the handedness conversion.
+      // Negative local Z folds both mirrored housings inward toward the body.
+      rotation.makeRotationZ(THREE.MathUtils.degToRad(-70) * ease);
       for (const mirror of mirrors.values()) mirror.motion.copy(mirror.anchor).multiply(rotation).multiply(mirror.inverse);
       portPhase = advance(portPhase, state.chargingPortOpen ? 1 : 0, dt / 0.8);
       portQ.slerpQuaternions(closedQ, openedQ, portPhase * portPhase * (3 - 2 * portPhase));

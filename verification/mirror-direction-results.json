@@ -1,0 +1,70 @@
+{
+  "version": "1.1.1",
+  "checks": [
+    "both closed-door mirrors fold inward and rearward",
+    "both mirrors restore original expanded pose",
+    "locking folds both mirrors inward",
+    "unlocking restores mirrors and lamps",
+    "fold direction survives both front-door rotations",
+    "repeated and reversed commands preserve current progress",
+    "rapid reversal finishes at original pose",
+    "no runtime or shader errors"
+  ],
+  "errors": [],
+  "poses": {
+    "expanded": [
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0409344820245878,
+          1.3255655217555005,
+          -0.9706942548881429
+        ]
+      },
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0409344820245878,
+          1.3255655217555005,
+          0.9706942548881429
+        ]
+      }
+    ],
+    "folded": [
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0209225864561886,
+          1.3380718268575669,
+          -0.8875249944033669
+        ]
+      },
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0209225864561886,
+          1.3380718268575669,
+          0.8875249944033669
+        ]
+      }
+    ],
+    "doorsOpenFoldedInDoorFrame": [
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0209225864561886,
+          1.3380718268575669,
+          -0.8875249944033669
+        ]
+      },
+      {
+        "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOR_HSJ/DOOR_HSJ",
+        "position": [
+          -1.0209225864561886,
+          1.3380718268575669,
+          0.8875249944033669
+        ]
+      }
+    ]
+  }
+}
