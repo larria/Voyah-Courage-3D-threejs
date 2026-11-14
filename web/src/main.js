@@ -2,10 +2,15 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { loadNpz } from './npz.js';
+import { createVehicleFeatures } from './vehicle-features.js';
+import { setupImmersion } from './ui.js';
+import { setupOffline } from './offline.js';
 import { installLoadingGuard, setupNavigation, button, pressed, reducedMotion } from './ui.js';
 
 const loadingGuard = installLoadingGuard();
 setupNavigation();
+setupImmersion();
+setupOffline();
 
 /* =========================================================
  * 全新岚图知音 · three.js 交互展示
@@ -112,6 +117,8 @@ function makeMaterials(paintColor) {
     // 日行灯: BaseColor(0.216) Emission(2.18,2.90,5.99) — 高亮
     '外观_日行灯': new THREE.MeshStandardMaterial({ color: 0x373737, emissive: 0xffffff, emissiveIntensity: 2.0, roughness: 0.22, metalness: 0.3 }),
     '外观_日行灯转向灯': new THREE.MeshStandardMaterial({ color: 0x373737, emissive: 0xffffff, emissiveIntensity: 2.0, roughness: 0.2 }),
+    '3_玻璃_车门后视镜': new THREE.MeshPhysicalMaterial({ color: 0xb8c3d0, metalness: 1, roughness: 0.08 }),
+    '外观_转向灯 1': new THREE.MeshStandardMaterial({ color: 0x787878, emissive: 0xff8800, emissiveIntensity: 0, roughness: 0.2 }),
     '外观_转向灯示廓灯': new THREE.MeshStandardMaterial({ color: 0x878787, emissive: 0xff6600, emissiveIntensity: 0.0, roughness: 0.2 }),
     // 高位灯/下部红色灯件: 按参考图校正为红色,避免旧橙色发光值在色调映射后泛黄。
     '外观_尾灯': new THREE.MeshStandardMaterial({ color: 0x980008, emissive: 0xff0000, emissiveIntensity: 1.4, toneMapped: false, roughness: 0.25 }),
@@ -153,8 +160,8 @@ function makeMaterials(paintColor) {
     '内饰_拉丝金属': new THREE.MeshStandardMaterial({ color: 0x9aa0aa, metalness: 0.9, roughness: 0.4 }),
     '内饰_屏幕': new THREE.MeshStandardMaterial({ color: 0x0a0c10, emissive: 0x16223a, emissiveIntensity: 0.9, roughness: 0.2 }),
     // 充电线 / 道路
-    'Charger_Head': new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.5 }),
-    'Charger_line': new THREE.MeshStandardMaterial({ color: 0xd8b24a, roughness: 0.5 }),
+    'Charger_Head': new THREE.MeshStandardMaterial({ color: 0x33383f, roughness: 0.5 }),
+    'Charger_line': new THREE.MeshStandardMaterial({ color: 0x20272d, roughness: 0.5 }),
     'Road': new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.95 }),
     'Inner': new THREE.MeshStandardMaterial({ color: 0x0d1117, roughness: 1.0 }),
     'SD': new THREE.MeshStandardMaterial({ color: 0x1a1c20, roughness: 0.9 }),
@@ -167,7 +174,18 @@ const assetBase = import.meta.env.BASE_URL;
 const npz = await loadNpz(`${assetBase}meshes.npz`);
 const sceneResp = await fetch(`${assetBase}scene.json`);
 if (!sceneResp.ok) throw new Error(`Scene loading failed: ${sceneResp.status}`);
-const sceneData = await sceneResp.json();
+const sceneText = await sceneResp.text();
+const sceneData = JSON.parse(sceneText);
+const interactionResponse = await fetch(`${assetBase}interactions.json`);
+if (!interactionResponse.ok) throw new Error('Interaction anchors could not be loaded');
+const interactionData = await interactionResponse.json();
+if (interactionData.nodes.length !== sceneData.nodes.length) throw new Error('Interaction anchors do not match the scene');
+// Secure contexts verify the exported scene hash; HTTP still checks all bindings below.
+if (globalThis.crypto?.subtle) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sceneText));
+  const hash = Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+  if (hash !== interactionData.sceneSHA256) throw new Error('Interaction anchors are stale; run export_interactions.py');
+}
 
 const loaderBar = document.getElementById('load-bar');
 const loaderPct = document.getElementById('load-pct');
@@ -305,7 +323,7 @@ for (const node of sceneData.nodes) {
   }
 }
 
-// Unity 场景辅助网格(遮罩球/平面阴影/路面标线/充电线),日间展示中隐藏,由 three.js 场景替代
+// 初始隐藏 Unity 场景辅助网格;充电线由交互控制显示,遮罩/阴影/标线由展台替代
 const HIDDEN_SCENE_NODES = new Set(['SD', 'Line', 'Line#2', 'mesh', 'Charger_LINE', 'Shape001']);
 
 for (const node of sceneData.nodes) {
@@ -335,7 +353,7 @@ for (const node of sceneData.nodes) {
 setProgress(0.85);
 
 /* =========================================================
- * 动画系统: 依据官方 API 结构 (triggerDoorLF/LB/RF/RB,
+ * 动画系统: 依据原始内部字段结构 (triggerDoorLF/LB/RF/RB,
  * triggerDoorWindow*, triggerTrunk, setWheelRoll,
  * carDrivingStatus) 在 three.js 中重实现
  * ========================================================= */
@@ -374,7 +392,9 @@ const doorParts = {
 // builtNodes 键已做重名唯一化 (name#N),instances 与 sceneData.nodes 一一对应
 const instances = sceneData.nodes.map((n, i) => {
   const key = n.name;
-  return { name: key, mesh: n.mesh, obj: builtNodes[key] || null };
+  const binding = interactionData.nodes[i];
+  if (binding.index !== i) throw new Error('Invalid interaction binding order');
+  return { name: key, mesh: n.mesh, path: binding.path, obj: builtNodes[key] || null };
 });
 
 // ---------- 门分组(基于世界包围盒, three 坐标) ----------
@@ -386,15 +406,8 @@ for (const inst of instances) {
   // 全部门件(含 DOOL_R_F_004 门把手内侧饰板 — 注意 R 前缀也要匹配)
   const isDoorPart = /^DOOL_[LR]_[FB]_/.test(m) || m === 'DOOR_HSJ';
   if (!isDoorPart) continue;
-  inst.obj.updateMatrixWorld();
-  const b = new THREE.Box3().setFromObject(inst.obj);
-  if (b.isEmpty()) continue;
-  const c = b.getCenter(new THREE.Vector3());
-  const side = c.z > 0.2 ? 'L' : c.z < -0.2 ? 'R' : null;
-  const front = c.x < -0.35 ? 'F' : 'B';   // 前门件中心 x≈-0.78, 后门件中心 x≈+0.3
-  if (!side) continue;
-  const key = side + front;
-  if (doorGroups[key]) doorGroups[key].push(inst);
+  const key = inst.path.match(/\/Door_(LF|RF|LB|RB)\//)?.[1];
+  if (key) doorGroups[key].push(inst);
 }
 
 // 车门开合状态机
@@ -476,12 +489,14 @@ const toastEl = document.getElementById('toast');
 let toastTimer;
 function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800); }
 const INTERIORS = [
-  { name: '旭日红', leather: 0xd1c7b5, accent: 0x6e3238, red: 0x8c2630 },
-  { name: '深海蓝', leather: 0x46596e, accent: 0x253b54, red: 0x28405e },
-  { name: '皓月白', leather: 0xe2ddd4, accent: 0xb8b2a8, red: 0xa8a29a },
+  { code: 'R', name: '旭日红', leather: 0xd1c7b5, accent: 0x6e3238, red: 0x8c2630 },
+  { code: 'P', name: '深海蓝', leather: 0x46596e, accent: 0x253b54, red: 0x28405e },
+  { code: 'Q', name: '皓月白', leather: 0xe2ddd4, accent: 0xb8b2a8, red: 0xa8a29a },
 ];
 const WHEELS = [{ name: '低风阻轮毂', mesh: 'Trie_A' }, { name: '运动轮毂', mesh: 'Trie_B' }];
-let activePaint = 0, activeInterior = 0, activeWheel = 0, lightsOn = true, activeView = '前侧';
+let activePaint = 0, activeInterior = 0, activeWheel = 0, activeView = '前侧';
+let animateOpenings = true;
+const features = createVehicleFeatures({ instances, metadata: interactionData, materials: matLibrary });
 const paintBtns = [], interiorBtns = [], wheelBtns = [], doorBtns = {}, winBtns = {}, viewBtns = {};
 const colorFrames = new Map();
 function fade(mat, hex, duration = 400) {
@@ -491,7 +506,7 @@ function fade(mat, hex, duration = 400) {
   function step(now) { const t = clamp((now - start) / duration, 0, 1); mat.color.copy(from).lerp(to, t); if (t < 1) colorFrames.set(mat, requestAnimationFrame(step)); else colorFrames.delete(mat); }
   colorFrames.set(mat, requestAnimationFrame(step));
 }
-const action = fn => () => { fn(); syncUI(); };
+const action = fn => () => { try { fn(); } catch (error) { toast(error.message); } syncUI(); };
 PAINTS.forEach((paint, i) => {
   const b = button(document.getElementById('colors'), paint.name, action(() => { activePaint = i; fade(matLibrary['外观_车漆'], paint.color, 450); toast(`外观颜色 · ${paint.name}`); }));
   b.className = 'color-chip'; const swatch = document.createElement('span'); swatch.className = 'swatch'; swatch.style.background = `radial-gradient(circle at 30% 25%, #ffffff55, transparent 65%), #${paint.color.toString(16).padStart(6, '0')}`; swatch.setAttribute('aria-hidden', 'true'); b.prepend(swatch); paintBtns.push(b);
@@ -518,10 +533,37 @@ const btnOpenAll = openingGroup('车门开合', doorState, doorBtns, '门');
 const btnWinAll = openingGroup('车窗升降', windowState, winBtns, '窗');
 const btnTrunk = button(doorsEl, '后备箱', action(() => { trunkState.v = trunkState.v > 0.5 ? 0 : 1; }), 'close-all');
 button(doorsEl, '全部关闭', action(() => { Object.keys(doorState).forEach(k => doorState[k] = 0); Object.keys(windowState).forEach(k => windowState[k] = 0); trunkState.v = 0; toast('门窗与尾门已关闭'); }), 'close-all');
-const LIGHT_ON = Object.fromEntries([...new Set([...emissiveTargets.headlight, ...emissiveTargets.taillight])].map(name => [name, matLibrary[name].emissiveIntensity]));
-function applyLights() { for (const mn of [...emissiveTargets.headlight, ...emissiveTargets.taillight]) matLibrary[mn].emissiveIntensity = lightsOn ? LIGHT_ON[mn] : 0; }
-const btnLights = button(document.getElementById('drive'), '车辆灯光', action(() => { lightsOn = !lightsOn; applyLights(); toast(lightsOn ? '灯光已开启' : '灯光已关闭'); }));
-const btnDrive = button(document.getElementById('drive'), '模拟行驶', action(() => { driving = !driving; if (driving) { lightsOn = true; applyLights(); } toast(driving ? '行驶动画已开启' : '已停车'); }));
+const lightBtns = {};
+for (const [key, label, method] of [['headlights', '前大灯与尾灯', 'setHeadlights'], ['daytimeRunningLights', '日间行车灯', 'setDaytimeRunningLights'], ['positionLights', '位置灯', 'setPositionLights']]) {
+  lightBtns[key] = button(document.getElementById('lights'), label, action(() => features[method](!features.getState()[key])));
+}
+const btnLights = button(document.getElementById('lights'), '全部灯光', action(() => {
+  const s = features.getState(); features.setAllLights(!(s.headlights && s.daytimeRunningLights && s.positionLights));
+}));
+const btnMirrors = button(document.getElementById('vehicle'), '折叠后视镜', action(() => features.setMirrors(!features.getState().mirrorsExpanded)));
+const btnLocked = button(document.getElementById('vehicle'), '锁车演示', action(() => { features.setLocked(!features.getState().locked); toast(features.getState().locked ? '锁车演示 · 收镜并关闭灯光' : '解锁演示 · 展镜并开启灯光'); }));
+const btnFlash = button(document.getElementById('vehicle'), '转向闪烁', action(() => features.flashTurnSignals()));
+const btnFind = button(document.getElementById('vehicle'), '寻车演示', action(() => { features.findCar(); toast('寻车演示 · 转向灯闪烁'); }));
+function setDriving(value) {
+  if (typeof value !== 'boolean') throw new TypeError('开关参数必须为 boolean');
+  if (value && features.getState().chargingCableVisible) throw new Error('请先隐藏充电线缆，再开始行驶');
+  driving = value;
+  if (driving) features.setAllLights(true);
+}
+const btnDrive = button(document.getElementById('drive'), '模拟行驶', action(() => { setDriving(!driving); toast(driving ? '行驶动画已开启' : '已停车'); }));
+const chargingBtns = {};
+for (const [key, label, method] of [['chargingPortOpen', '充电盖板', 'setChargingPortOpen'], ['chargingCableVisible', '充电线缆', 'setChargingCableVisible'], ['charging', '充电流光', 'setCharging']]) {
+  chargingBtns[key] = button(document.getElementById('charging-controls'), label, action(() => {
+    const value = !features.getState()[key];
+    features[method](value);
+    if (value && key !== 'chargingPortOpen') setDriving(false);
+  }));
+}
+button(document.getElementById('charging-controls'), '查看充电口', action(() => { selectView('充电口'); toast('充电口位于车辆右后侧'); }));
+const btnAnimation = button(document.getElementById('opening-options'), '开合动画', action(() => {
+  animateOpenings = !animateOpenings;
+  toast(animateOpenings ? '使用两秒门窗动画' : '门窗即时切换');
+}));
 document.getElementById('speed').oninput = event => { driveSpeed = Number(event.target.value); syncUI(); };
 const VIEWS = {
   '前侧': { pos: [-8.5, 4.2, 9.5], tgt: [0, 1, 0] },
@@ -529,30 +571,121 @@ const VIEWS = {
   '侧身': { pos: [0.01, 2.2, 12.5], tgt: [0, 1.1, 0] },
   '后45°': { pos: [9.5, 4.0, 8.5], tgt: [0, 1, 0] },
   '俯瞰': { pos: [-2, 13, 7], tgt: [0, 0.5, 0] },
+  '充电口': { pos: [5.5, 2.8, -7], tgt: [0.8, 1, -0.5] },
   '内饰': { pos: [-0.35, 1.45, 0], tgt: [-1.35, 1.1, 0] },
 };
-let viewTween = null;
+let viewTween = null, interiorMode = false, exteriorPose = null;
 function viewPosition(v, interior) {
   const target = new THREE.Vector3(...v.tgt), position = new THREE.Vector3(...v.pos);
   if (!interior) position.sub(target).multiplyScalar(0.72 * Math.max(1, 1 / Math.max(camera.aspect, 0.55))).add(target);
   return position;
 }
+function stopOrbitMomentum() {
+  const position = camera.position.clone(), target = controls.target.clone();
+  const damping = controls.enableDamping;
+  controls.enableDamping = false; controls.update();
+  camera.position.copy(position); controls.target.copy(target);
+  controls.enableDamping = damping; controls.update();
+}
 function selectView(name, immediate = false) {
-  activeView = name; const v = VIEWS[name]; controls.minDistance = name === '内饰' ? 0.4 : 4.5;
+  if (!VIEWS[name]) throw new TypeError('未知视角');
+  stopOrbitMomentum();
+  if (name === '内饰' && !interiorMode) exteriorPose = { position: camera.position.clone(), target: controls.target.clone(), view: activeView };
+  interiorMode = name === '内饰';
+  document.body.classList.toggle('interior-view', interiorMode);
+  activeView = name; const v = VIEWS[name]; controls.minDistance = interiorMode ? 0.4 : 4.5;
+  controls.maxDistance = interiorMode ? 3 : 22;
+  camera.near = interiorMode ? 0.02 : 0.1; camera.updateProjectionMatrix();
   const toP = viewPosition(v, name === '内饰'), toT = new THREE.Vector3(...v.tgt);
   if (immediate || reducedMotion()) { viewTween = null; camera.position.copy(toP); controls.target.copy(toT); controls.update(); }
   else viewTween = { t: 0, fromP: camera.position.clone(), toP, fromT: controls.target.clone(), toT };
 }
 for (const name of Object.keys(VIEWS)) viewBtns[name] = button(document.getElementById('views'), name, action(() => { selectView(name); toast(`视角 · ${name}`); }));
+const btnEnterInterior = button(document.getElementById('interior-views'), '进入内饰', action(() => selectView('内饰')));
+function exitInterior() {
+  if (!interiorMode) return;
+  const pose = exteriorPose;
+  selectView('前侧', true);
+  if (pose) { camera.position.copy(pose.position); controls.target.copy(pose.target); activeView = pose.view; controls.update(); }
+  exteriorPose = null;
+}
+const btnExitInterior = button(document.getElementById('interior-views'), '返回外观', action(exitInterior));
 controls.addEventListener('start', () => { viewTween = null; activeView = null; syncUI(); });
 function syncUI() {
   paintBtns.forEach((b, i) => pressed(b, i === activePaint)); interiorBtns.forEach((b, i) => pressed(b, i === activeInterior)); wheelBtns.forEach((b, i) => pressed(b, i === activeWheel));
   for (const key of Object.keys(doorBtns)) { pressed(doorBtns[key], doorState[key] > 0.5); pressed(winBtns[key], windowState[key] > 0.5); }
-  pressed(btnOpenAll, aggregate(doorState)); pressed(btnWinAll, aggregate(windowState)); pressed(btnTrunk, trunkState.v > 0.5); pressed(btnLights, lightsOn); pressed(btnDrive, driving);
+  pressed(btnOpenAll, aggregate(doorState)); pressed(btnWinAll, aggregate(windowState)); pressed(btnTrunk, trunkState.v > 0.5); pressed(btnDrive, driving);
+  const fs = features.getState();
+  for (const [key, b] of Object.entries(lightBtns)) pressed(b, fs[key]);
+  pressed(btnLights, aggregate({ head: Number(fs.headlights), drl: Number(fs.daytimeRunningLights), position: Number(fs.positionLights) }));
+  pressed(btnMirrors, !fs.mirrorsExpanded); btnMirrors.textContent = fs.mirrorsExpanded ? '折叠后视镜' : '展开后视镜';
+  pressed(btnLocked, fs.locked); btnLocked.textContent = fs.locked ? '解锁演示' : '锁车演示';
+  for (const [key, b] of Object.entries(chargingBtns)) pressed(b, fs[key]);
+  pressed(btnAnimation, animateOpenings); pressed(btnEnterInterior, interiorMode); pressed(btnExitInterior, !interiorMode);
+  document.getElementById('charging-status').textContent = fs.charging ? '充电流光演示中' : fs.chargingCableVisible ? '线缆已连接 · 未充电' : fs.chargingPortOpen ? '盖板已打开' : '未连接';
   for (const [name, b] of Object.entries(viewBtns)) pressed(b, name === activeView);
   document.getElementById('paint-name').textContent = PAINTS[activePaint].name; document.getElementById('paint-summary').textContent = PAINTS[activePaint].name;
   document.getElementById('speed-val').textContent = driveSpeed.toFixed(1) + '×';
 }
+function opening(kind, id, open, options = {}) {
+  if (!Object.hasOwn(doorState, id) || typeof open !== 'boolean' || (options.animate !== undefined && typeof options.animate !== 'boolean')) throw new TypeError('id 必须为 LF/RF/LB/RB，open 和 animate 必须为 boolean');
+  const state = kind === 'door' ? doorState : windowState;
+  state[id] = Number(open);
+  if (options.animate === false && doorAnim[id]) {
+    if (kind === 'door') doorAnim[id].cur = Number(open) * THREE.MathUtils.degToRad(65) * (id[0] === 'L' ? -1 : 1);
+    else doorAnim[id].winCur = Number(open);
+  }
+}
+const apiAction = fn => (...args) => { fn(...args); syncUI(); };
+window.carViewer = Object.freeze({
+  getState: () => ({ paint: PAINTS[activePaint].code, interior: INTERIORS[activeInterior].code, wheelType: activeWheel,
+    doors: Object.fromEntries(Object.entries(doorState).map(([k, v]) => [k, Boolean(v)])),
+    windows: Object.fromEntries(Object.entries(windowState).map(([k, v]) => [k, Boolean(v)])),
+    trunkOpen: Boolean(trunkState.v), driving, viewMode: interiorMode ? 'interior' : 'exterior', view: activeView,
+    ...features.getState() }),
+  setPaint: apiAction(code => { const index = PAINTS.findIndex(p => p.code === code); if (index < 0) throw new TypeError('未知车漆代码'); activePaint = index; fade(matLibrary['外观_车漆'], PAINTS[index].color); }),
+  setInterior: apiAction(code => { const index = INTERIORS.findIndex(p => p.code === code); if (index < 0) throw new TypeError('内饰代码必须为 R/P/Q'); activeInterior = index; const it = INTERIORS[index]; for (const [name, hex] of [['内饰_浅色皮革 1', it.leather], ['内饰_亮色', it.leather], ['内饰_皮革拼色 1', it.accent], ['内飾_red', it.red], ['内饰_皮革色塑料紋理', it.leather]]) fade(matLibrary[name], hex); }),
+  setDoor: apiAction((...args) => opening('door', ...args)),
+  setWindow: apiAction((...args) => opening('window', ...args)),
+  toggleTrunk: apiAction(() => { trunkState.v = 1 - trunkState.v; }),
+  setWheelType: apiAction(index => { if (![0, 1].includes(index)) throw new TypeError('轮毂索引必须为 0/1'); activeWheel = index; for (const w of wheels) w.obj.visible = w.mesh === WHEELS[index].mesh; }),
+  setDriving: apiAction(setDriving),
+  ...Object.fromEntries(['setHeadlights', 'setDaytimeRunningLights', 'setPositionLights', 'setMirrors', 'setLocked', 'flashTurnSignals', 'findCar', 'setChargingPortOpen'].map(method => [method, apiAction(features[method])])),
+  setCharging: apiAction(value => { features.setCharging(value); if (value) setDriving(false); }),
+  setChargingCableVisible: apiAction(value => { features.setChargingCableVisible(value); if (value) setDriving(false); }),
+  setCameraPreset: apiAction(index => { if (![0, 1, 2].includes(index)) throw new TypeError('相机预设必须为 0/1/2'); selectView(['前侧', '正前', '后45°'][index]); }),
+  enterInterior: apiAction(code => { if (code !== undefined) window.carViewer.setInterior(code); selectView('内饰'); }),
+  exitInterior: apiAction(exitInterior),
+});
+
+// Treat a tap as a model interaction only when it did not become an orbit gesture.
+const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2();
+const instanceByObject = new Map(instances.map(i => [i.obj, i]));
+let pointerStart;
+renderer.domElement.addEventListener('pointerdown', event => { if (event.isPrimary && event.button === 0) pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId }; });
+renderer.domElement.addEventListener('pointercancel', () => { pointerStart = null; });
+renderer.domElement.addEventListener('pointerup', event => {
+  const start = pointerStart; pointerStart = null;
+  if (!start || event.pointerId !== start.id || Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -(event.clientY - rect.top) / rect.height * 2 + 1);
+  raycaster.setFromCamera(pointer, camera);
+  const visible = instances.filter(i => i.obj?.visible).map(i => i.obj);
+  const hit = raycaster.intersectObjects(visible, true)[0];
+  if (!hit) return;
+  let obj = hit.object;
+  while (obj && !instanceByObject.has(obj)) obj = obj.parent;
+  const inst = instanceByObject.get(obj);
+  if (!inst) return;
+  const id = inst.path.match(/\/Door_(LF|RF|LB|RB)\//)?.[1];
+  try {
+    if (inst.mesh === 'DOOR_HSJ') features.setMirrors(!features.getState().mirrorsExpanded);
+    else if (id) { const kind = inst.mesh.includes('GLASS') ? 'window' : 'door'; const state = kind === 'door' ? doorState : windowState; opening(kind, id, !state[id]); }
+    else if (trunkInstances.includes(inst)) trunkState.v = 1 - trunkState.v;
+    else if (inst.mesh === 'cdk') features.setChargingPortOpen(!features.getState().chargingPortOpen);
+  } catch (error) { toast(error.message); }
+  syncUI();
+});
 syncUI();
 setProgress(1);
 loadingGuard.ready();
@@ -561,7 +694,7 @@ loadingGuard.ready();
  * 渲染循环
  * ========================================================= */
 // 调试暴露
-window.__carDebug = { scene, carRoot, instances, doorAnim, doorGroups, wheels, trunkInstances, matLibrary, camera, controls };
+window.__carDebug = { getExteriorPose: () => exteriorPose && ({ p: exteriorPose.position.toArray(), t: exteriorPose.target.toArray() }), features, scene, carRoot, instances, doorAnim, doorGroups, wheels, trunkInstances, matLibrary, camera, controls };
 
 const clock = new THREE.Clock();
 const tmpM = new THREE.Matrix4();
@@ -574,6 +707,7 @@ function animate() {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
+  features.update(dt);
   // 平滑插值: 门/窗/后备箱
   // 官方动画实测(原版 Unity WASM 桥 phase 采样): 门/窗均为 0→2 线性插值,恒定 2.0s,无缓动
   // 门窗联动管线: 每帧从"装配基准矩阵"重新组合 = 门旋转 ∘ 窗下降,避免两路动画互相覆盖
@@ -585,12 +719,14 @@ function animate() {
     const sideSign = k[0] === 'L' ? -1 : 1;
     const doorTarget = doorState[k] * THREE.MathUtils.degToRad(65) * sideSign;
     anim.cur += Math.sign(doorTarget - anim.cur) * Math.min(Math.abs(doorTarget - anim.cur), dt * spd * 0.5 * (Math.PI * 65 / 180));
+    if (!animateOpenings) anim.cur = doorTarget;
     // --- 车窗下降进度(线性 2.0s) ---
     const winTarget = windowState[k];
     anim.winCur += Math.sign(winTarget - anim.winCur) * Math.min(Math.abs(winTarget - anim.winCur), dt * spd * 0.5);
     const isRear = k[1] === 'B';
     // 后窗可见高度约0.374m,保留约1/5(0.075m),避免裁剪后仅剩顶边。
     const maxDrop = isRear ? 0.30 : 0.45;
+    if (!animateOpenings) anim.winCur = windowState[k];
     const drop = anim.winCur * maxDrop;
 
     // --- 组合应用: 每件 = 门旋转 × (窗下降 × 装配基准) ---
@@ -609,7 +745,10 @@ function animate() {
         const down = new THREE.Matrix4().makeTranslation(forward, -drop, outward);
         obj.matrix.copy(doorMat).multiply(down).multiply(anim.base[i]);
       } else {
-        obj.matrix.copy(doorMat).multiply(anim.base[i]);
+        obj.matrix.copy(doorMat);
+        const mirror = features.mirrorMatrix(obj);
+        if (mirror) obj.matrix.multiply(mirror);
+        obj.matrix.multiply(anim.base[i]);
       }
       obj.matrixWorldNeedsUpdate = true;
     }
@@ -661,6 +800,8 @@ function animate() {
     if (viewTween.t >= 1) viewTween = null;
   }
 
+  const signaling = features.getState().signaling;
+  pressed(btnFlash, signaling === 'turn'); pressed(btnFind, signaling === 'find');
   controls.update();
   renderer.render(scene, camera);
 }

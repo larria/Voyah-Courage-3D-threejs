@@ -14,7 +14,7 @@ Run commands from the repository root. Vite 8 requires Node 20.19+ (20.x) or 22.
 - `node --check scripts/publish.mjs`: syntax-check the publishing script without publishing.
 - `uv run /absolute/path/to/tools/export_final.py`: extract assets with the script's Python 3.10+ / UnityPy / NumPy / Pillow dependency declaration; requires local `unity-player/Build/ZY.data`. Extraction resolves paths relative to the script, not the invoking directory.
 
-There are currently no lint or automated test commands in the frontend package, so no single-test command exists. Build checks alone do not validate animation or appearance; inspect relevant interactions in the running viewer.
+Run `npm test` for vehicle-feature state and matrix checks. Run `PAGES_BASE=/Voyah-Courage-3D-threejs/ npm run build` and `python3 verification/browser-check.py` for production UI, motion, subpath, update and offline verification (requires Playwright Chromium and Pillow). Build checks alone do not validate animation or appearance.
 
 ## Architecture
 
@@ -33,3 +33,7 @@ The exact HTTPS remotes are `github=https://github.com/larria/Voyah-Courage-3D-t
 No GitHub Actions or gh CLI are used. GitHub Pages is manually configured in repository Settings → Pages to deploy `gh-pages` from `/(root)`.
 
 Model, texture, trademark and original Unity resource rights remain with their respective owners. The existing frontend package's ISC metadata is not a grant covering third-party assets; do not describe all repository content as ISC-licensed or promise commercial redistribution rights.
+
+## Interaction additions
+
+`web/src/vehicle-features.js` handles mirrors, independent lamps, transient signals and charging. `web/public/interactions.json` binds exported instances to original hierarchy and charging-port poses; refresh using `uv run tools/export_interactions.py` after asset changes. The full exporter refreshes these anchors automatically. `web/offline-plugin.mjs` hashes final built files including HTML to generate `sw.js`; do not hash HTML in generateBundle before Vite emits it. `npm run publish -- --github-only` publishes only GitHub main and gh-pages when that scope is requested.

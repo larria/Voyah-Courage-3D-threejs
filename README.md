@@ -18,18 +18,25 @@
 | 后备箱 | 尾门上掀 76° |
 | 行驶 | 轮胎滚动、道路流动、悬挂微起伏、自动开灯 |
 | 灯光 | 大灯、尾灯、日行灯开关及自发光材质 |
-| 视角 | 前侧、正前、侧身、后 45°、俯瞰、内饰预设及平滑切换 |
+| 独立灯组 | 前大灯/尾灯、日行灯、位置灯独立开关；总开关及转向闪烁 |
+| 后视镜与锁车 | 双镜折叠/展开，锁车收镜熄灯、解锁展镜亮灯，寻车闪烁 |
+| 充电 | 右后盖板、插头/线缆与流光分别控制，盖板/线缆联动 |
+| 视角 | 前侧、正前、侧身、后 45°、俯瞰、充电口、内饰；可返回进入前的外观视角 |
+| 模型点击 | 点击门窗、尾门、后视镜、充电盖板操作部件；门窗可选择动画或即时切换 |
+| 沉浸与离线 | 沉浸全屏、PWA 安装、完整离线缓存及确认后更新 |
 
 模型几何和部分材质信息来自原始资源；车漆、灯光、玻璃及纹理表现经过 three.js 环境下的视觉校准，并不宣称精确复刻官方渲染效果。门窗动画在本项目中实现，不代表官网父页面提供对应消息 API。
 
+v1.1.0 的逐项对比、参考项目说明差异及未对齐的实验能力见 [功能对齐记录](docs/feature-parity.md)。
+
 ## 界面操作
 
-桌面采用独立三维展台与右侧配置面板；手机采用上方展台与可收起的底部面板，两者不互相覆盖。通过「外观搭配 / 门窗开合 / 动态体验」切换配置类别；键盘可用左右方向键、Home、End 切换标签，Tab 与 Enter / Space 操作色彩和按钮。
+桌面采用独立三维展台与右侧配置面板；手机采用上方展台与可收起的底部面板，两者不互相覆盖。通过「外观搭配 / 门窗开合 / 动态体验 / 充电展示」切换配置类别；键盘可用左右方向键、Home、End 切换标签，Tab 与 Enter / Space 操作色彩和按钮。
 
 - 车身色彩、内饰与轮毂分别选择，当前状态通过按钮高亮与 `aria-pressed` 表达。
 - 四门与四窗可独立开合。「全部」按钮在部分开启时呈混合状态，再次操作将全部开启；全部开启后再次操作将全部关闭。
 - 「全部关闭」仅关闭门窗与尾门，保留配色、灯光、行驶状态和相机。
-- 展台底部提供六个视角。手动开始拖动会取消相机过渡；内饰视角保留近距离观察限制。
+- 展台底部提供七个视角。手动开始拖动会取消相机过渡；内饰视角保留近距离观察限制。
 - 「行驶动画倍率」只控制轮胎与道路动画，不代表真实车速，不改变门窗动画时长。
 - 加载期间车辆操作不可用；加载失败会显示重新加载按钮。系统减少动态效果设置只取消色彩与相机过渡，不改变物理开合动画。
 
@@ -44,6 +51,28 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## 开发验证
+
+```bash
+npm test
+PAGES_BASE=/Voyah-Courage-3D-threejs/ npm run build
+# 以下需要额外安装 Playwright Chromium 与 Pillow
+python3 verification/browser-check.py
+```
+
+普通开发不需要 Python 验证依赖。浏览器验证使用临时目录和独立端口，不改变发布构建；截图与 JSON 保存到 verification。
+
+模型加载后可通过 `window.carViewer` 调用 `setDoor`、`setWindow`、`setPaint`、`setInterior`、`setWheelType`、`toggleTrunk`、`setDriving`、`setHeadlights`、`setDaytimeRunningLights`、`setPositionLights`、`setMirrors`、`setLocked`、`flashTurnSignals`、`findCar`、`setChargingPortOpen`、`setChargingCableVisible`、`setCharging`、`enterInterior`、`exitInterior`、`setCameraPreset(0/1/2)` 和 `getState`。开关严格接受 boolean；门窗位置为 LF/RF/LB/RB；内饰代码为 R/P/Q。`setInterior` 只改变配色。
+
+```js
+carViewer.setCharging(true);   // 开盖、连线、流光、停车
+carViewer.setCharging(false);  // 只停止流光
+carViewer.setChargingCableVisible(false); // 隐藏线缆并关盖
+carViewer.setDoor('LF', true, { animate: false });
+```
+
+生产构建会生成 Service Worker；HTTPS/localhost 下缓存完成才显示“离线可用”。普通 HTTP 局域网仍可在线运行。浏览器清除缓存或资源内容改变时需重新下载。安装入口取决于浏览器的 PWA 支持；新版就绪时可选择刷新或稍后，后者保留当前交互。
 
 ## 项目结构
 
@@ -68,7 +97,7 @@ unity-player/             # 本地原始 Unity WebGL 资源，Git 忽略，不�
 
 ## 数据提取
 
-原配置器是 Unity WebGL 应用，输入资源为本地 `unity-player/Build/ZY.data`。`tools/export_final.py` 使用 UnityPy、NumPy 和 Pillow 提取场景层级、网格与贴图；Unity 左手坐标转为 three.js 右手坐标（z 反向并反转三角形绕序）。输出到项目 `web/public/`。
+原配置器是 Unity WebGL 应用，输入资源为本地 `unity-player/Build/ZY.data`。`tools/export_final.py` 使用 UnityPy、NumPy 和 Pillow 提取场景层级、网格与贴图；Unity 左手坐标转为 three.js 右手坐标（z 反向并反转三角形绕序）。输出到项目 `web/public/`，并生成交互锚点。
 
 原始 `unity-player/` 不随源码仓库分发。仅在合法持有原始数据时进行提取；已有 `web/public/` 时，普通开发和发布不需要运行提取脚本。脚本按自身位置解析项目路径，不依赖调用者的工作目录。例如安装 uv 后可执行（PEP 723 声明了 Python 3.10+ 及依赖）
 
@@ -77,6 +106,14 @@ uv run /绝对路径/全新岚图知音3d模型/tools/export_final.py
 ```
 
 原模型尺寸可用于检查坐标和比例，但不能仅凭网格边界推断官方整车尺寸或误差原因。
+
+仅刷新交互层级与盖板姿态、不重写已有网格和贴图时，可运行：
+
+```bash
+uv run tools/export_interactions.py
+```
+
+脚本验证现有场景矩阵与原始 Build 对应关系；资源不匹配时停止，不能复用旧锚点。
 
 ### Unity 消息边界
 
@@ -111,6 +148,14 @@ npm run publish
 6. 无论成功或失败都清理临时目录；失败时明确打印已成功的推送，不会自动回滚，解决错误后可重新运行。
 
 本机未安装 `gh` CLI。首次部署后，在 GitHub 仓库网页中手动打开 **Settings → Pages → Build and deployment**，选择 **Deploy from a branch**，分支选 **gh-pages**，目录选 **/(root)** 并保存。Pages 发布可能稍有延迟；脚本推送成功不等于网站已立即上线。
+
+### 仅发布 GitHub 与 Pages
+
+```bash
+npm run publish -- --github-only
+```
+
+此选项只检查和推送 GitHub main / gh-pages。省略时仍按原流程同步两个源码仓库。部署包含 `source-revision.json`，记录对应源提交；发布后核对远端 main 与 gh-pages 提交。源码需先提交，脚本不会替你提交。
 
 ## 权利与使用限制
 

@@ -122,6 +122,9 @@ def get_color(mat):
         pass
     return None
 
+# Unity left-handed -> three.js right-handed (world matrices and mesh data).
+coordinate_flip = np.diag([1, 1, -1, 1])
+
 # ---------- 导出: 遍历 ZY 树 ----------
 children_map = {}
 for pid, t in trs.items():
@@ -185,6 +188,9 @@ for tpid, gpid in targets:
     name = m.m_Name
     if name not in mesh_data:
         v, n, uv, subs = parse_mesh(m)
+        v[:, 2] *= -1
+        if n is not None: n[:, 2] *= -1
+        subs = [np.asarray(sub).reshape(-1, 3)[:, [0, 2, 1]].reshape(-1).tolist() for sub in subs]
         mesh_data[name] = dict(v=v, n=n, uv=uv, subs=subs)
     mats = []
     for mo in go_mats.get(gpid, []):
@@ -201,7 +207,7 @@ for tpid, gpid in targets:
         parent_transform_id=tpid,
         materials=mats))
     # 直接存矩阵
-    scene_nodes[-1]["matrix"] = world_of(tpid).tolist()
+    scene_nodes[-1]["matrix"] = (coordinate_flip @ world_of(tpid) @ coordinate_flip).tolist()
     del scene_nodes[-1]["quat"]
 
 print(f"网格 {len(mesh_data)} 个,纹理 {len(tex_cache)} 张")
@@ -221,3 +227,7 @@ for name, md in mesh_data.items():
 np.savez_compressed("web/public/meshes.npz", **out)
 json.dump(dict(nodes=scene_nodes), open("web/public/scene.json","w"), ensure_ascii=False, indent=1)
 print("已导出 web/public/meshes.npz + scene.json")
+
+# Keep hierarchy bindings synchronized with freshly extracted matrices.
+from export_interactions import export_interactions
+export_interactions()

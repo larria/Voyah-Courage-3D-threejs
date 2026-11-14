@@ -35,6 +35,31 @@ export function setupNavigation() {
   const toggle = document.getElementById('sheet-toggle');
   toggle.onclick = () => { const collapsed = document.querySelector('.workspace').classList.toggle('sheet-collapsed'); toggle.setAttribute('aria-expanded', String(!collapsed)); toggle.querySelector('span').textContent = collapsed ? '展开' : '收起'; };
 }
+export function setupImmersion() {
+  const workspace = document.querySelector('.workspace');
+  const enter = document.getElementById('immerse'), exit = document.getElementById('restore');
+  let requestedFullscreen = false;
+  function show(on) {
+    document.body.classList.toggle('immersive', on);
+    enter.setAttribute('aria-pressed', String(on));
+    exit.hidden = !on;
+    (on ? exit : enter).focus();
+  }
+  async function restore() {
+    show(false);
+    if (document.fullscreenElement === workspace) await document.exitFullscreen().catch(() => {});
+  }
+  enter.onclick = async () => {
+    show(true);
+    try { await workspace.requestFullscreen?.(); } catch { /* Immersion still works without native fullscreen. */ }
+  };
+  exit.onclick = restore;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('immersive')) restore(); });
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement === workspace) requestedFullscreen = true;
+    else if (requestedFullscreen) { requestedFullscreen = false; show(false); }
+  });
+}
 export function button(parent, label, action, className = '') {
   const b = document.createElement('button'); b.type = 'button'; b.className = `btn ${className}`; b.textContent = label; b.disabled = true; b.onclick = action; parent.appendChild(b); return b;
 }

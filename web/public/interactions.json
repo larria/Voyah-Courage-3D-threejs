@@ -1,0 +1,352 @@
+{
+  "dataSHA256": "6d7394f4410750ee80f7fdb6e8049c71c484ad9c23367f09e8cb95f4db261d6f",
+  "sceneSHA256": "5007e600d9dc2858cc85738a4aa4ba77fe4379cca7da2b1b263e7faee3a2da70",
+  "nodes": [
+    {
+      "index": 0,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_a/Trie_A (2)"
+    },
+    {
+      "index": 1,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_a/Trie_A (3)"
+    },
+    {
+      "index": 2,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_a/Trie_A (1)"
+    },
+    {
+      "index": 3,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_a/Trie_A"
+    },
+    {
+      "index": 4,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_b/Trie_B (2)/Trie_B"
+    },
+    {
+      "index": 5,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_b/Trie_B (1)/Trie_B"
+    },
+    {
+      "index": 6,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_b/Trie_B (3)/Trie_B"
+    },
+    {
+      "index": 7,
+      "path": "ZY/ZY-new/ZY/Tires/Tires_b/Trie_B/Trie_B"
+    },
+    {
+      "index": 8,
+      "path": "ZY/ZY-new/ZY/Door/Door_LB/DOOL_L_B_003"
+    },
+    {
+      "index": 9,
+      "path": "ZY/ZY-new/ZY/Door/Door_LB/DOOL_L_B_001"
+    },
+    {
+      "index": 10,
+      "path": "ZY/ZY-new/ZY/Door/Door_LB/DOOL_L_B_002"
+    },
+    {
+      "index": 11,
+      "path": "ZY/ZY-new/ZY/Door/Door_LB/DOOL_L_B_GLASS_01/DOOL_L_B_GLASS"
+    },
+    {
+      "index": 12,
+      "path": "ZY/ZY-new/ZY/Door/Door_RB/DOOL_L_B_003"
+    },
+    {
+      "index": 13,
+      "path": "ZY/ZY-new/ZY/Door/Door_RB/DOOL_L_B_002"
+    },
+    {
+      "index": 14,
+      "path": "ZY/ZY-new/ZY/Door/Door_RB/DOOL_L_B_GLASS_01/DOOL_L_B_GLASS"
+    },
+    {
+      "index": 15,
+      "path": "ZY/ZY-new/ZY/Door/Door_RB/DOOL_L_B_001"
+    },
+    {
+      "index": 16,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_L_F_002"
+    },
+    {
+      "index": 17,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_L_F_005"
+    },
+    {
+      "index": 18,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOR_HSJ/DOOR_HSJ"
+    },
+    {
+      "index": 19,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_L_F_GLASS_02/DOOL_L_F_GLASS"
+    },
+    {
+      "index": 20,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_L_F_003"
+    },
+    {
+      "index": 21,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_R_F_004"
+    },
+    {
+      "index": 22,
+      "path": "ZY/ZY-new/ZY/Door/Door_RF/DOOL_L_F_001"
+    },
+    {
+      "index": 23,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOR_HSJ/DOOR_HSJ"
+    },
+    {
+      "index": 24,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_L_F_002"
+    },
+    {
+      "index": 25,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_L_F_005"
+    },
+    {
+      "index": 26,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_R_F_004"
+    },
+    {
+      "index": 27,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_L_F_001"
+    },
+    {
+      "index": 28,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_L_F_003"
+    },
+    {
+      "index": 29,
+      "path": "ZY/ZY-new/ZY/Door/Door_LF/DOOL_L_F_GLASS_02/DOOL_L_F_GLASS"
+    },
+    {
+      "index": 30,
+      "path": "ZY/ZY-new/ZY/SD"
+    },
+    {
+      "index": 31,
+      "path": "ZY/ZY-new/ZY/Ins/XP_INS_N3"
+    },
+    {
+      "index": 32,
+      "path": "ZY/ZY-new/ZY/Ins/XP_INS_N1_N2"
+    },
+    {
+      "index": 33,
+      "path": "ZY/ZY-new/ZY/Ins/INS_SYS (1)/INS_8_SYS"
+    },
+    {
+      "index": 34,
+      "path": "ZY/ZY-new/ZY/Ins/INS_03"
+    },
+    {
+      "index": 35,
+      "path": "ZY/ZY-new/ZY/Ins/XP_INS_N2"
+    },
+    {
+      "index": 36,
+      "path": "ZY/ZY-new/ZY/Ins/INS_19"
+    },
+    {
+      "index": 37,
+      "path": "ZY/ZY-new/ZY/Ins/INS_20"
+    },
+    {
+      "index": 38,
+      "path": "ZY/ZY-new/ZY/Ins/INS21"
+    },
+    {
+      "index": 39,
+      "path": "ZY/ZY-new/ZY/Ins/INS_SYS/INS_8_SYS"
+    },
+    {
+      "index": 40,
+      "path": "ZY/ZY-new/ZY/WG/WG_glass_TC"
+    },
+    {
+      "index": 41,
+      "path": "ZY/ZY-new/ZY/WG/Light_F"
+    },
+    {
+      "index": 42,
+      "path": "ZY/ZY-new/ZY/WG/WG_SYS/WG_001_SYS"
+    },
+    {
+      "index": 43,
+      "path": "ZY/ZY-new/ZY/WG/WG_SYS (1)/WG_001_SYS"
+    },
+    {
+      "index": 44,
+      "path": "ZY/ZY-new/ZY/WG/Light_B"
+    },
+    {
+      "index": 45,
+      "path": "ZY/ZY-new/ZY/WG/CDK/cdk"
+    },
+    {
+      "index": 46,
+      "path": "ZY/ZY-new/ZY/WG/WG_light_glass_B"
+    },
+    {
+      "index": 47,
+      "path": "ZY/ZY-new/ZY/WG/WG_SYS (1)/WG_001_SYS"
+    },
+    {
+      "index": 48,
+      "path": "ZY/ZY-new/ZY/WG/WG_glass_Fb"
+    },
+    {
+      "index": 49,
+      "path": "ZY/ZY-new/ZY/WG/WG_Light_FDIAN"
+    },
+    {
+      "index": 50,
+      "path": "ZY/ZY-new/ZY/WG/WG_glass_F"
+    },
+    {
+      "index": 51,
+      "path": "ZY/ZY-new/ZY/WG/Light_SKD_B"
+    },
+    {
+      "index": 52,
+      "path": "ZY/ZY-new/ZY/WG/Light_RXD_F"
+    },
+    {
+      "index": 53,
+      "path": "ZY/ZY-new/ZY/WG/WG_002"
+    },
+    {
+      "index": 54,
+      "path": "ZY/ZY-new/ZY/WG/Light_ZXD_F"
+    },
+    {
+      "index": 55,
+      "path": "ZY/ZY-new/ZY/WG/WG_light_glass_F"
+    },
+    {
+      "index": 56,
+      "path": "ZY/ZY-new/ZY/WG/CHEPEI"
+    },
+    {
+      "index": 57,
+      "path": "ZY/ZY-new/ZY/WG/Light_ZXD_B"
+    },
+    {
+      "index": 58,
+      "path": "ZY/ZY-new/ZY/WG/WG_glass_C"
+    },
+    {
+      "index": 59,
+      "path": "ZY/ZY-new/ZY/Trunk/TURRNK_SKD_B"
+    },
+    {
+      "index": 60,
+      "path": "ZY/ZY-new/ZY/Trunk/LG1/LaGan_000"
+    },
+    {
+      "index": 61,
+      "path": "ZY/ZY-new/ZY/Trunk/LG1/LaGan_001"
+    },
+    {
+      "index": 62,
+      "path": "ZY/ZY-new/ZY/Trunk/CHEPEI_02"
+    },
+    {
+      "index": 63,
+      "path": "ZY/ZY-new/ZY/Trunk/TURNK_003"
+    },
+    {
+      "index": 64,
+      "path": "ZY/ZY-new/ZY/Trunk/TURNK_GLASS"
+    },
+    {
+      "index": 65,
+      "path": "ZY/ZY-new/ZY/Trunk/TURNK_Light_GLASS"
+    },
+    {
+      "index": 66,
+      "path": "ZY/ZY-new/ZY/Trunk/LG2/LaGan_001"
+    },
+    {
+      "index": 67,
+      "path": "ZY/ZY-new/ZY/Trunk/LG2/LaGan_000"
+    },
+    {
+      "index": 68,
+      "path": "Charger_LINE"
+    },
+    {
+      "index": 69,
+      "path": "Charger_LINE/Shape001"
+    },
+    {
+      "index": 70,
+      "path": "Road/Road/Line"
+    },
+    {
+      "index": 71,
+      "path": "Road/Road/Line"
+    },
+    {
+      "index": 72,
+      "path": "mesh"
+    }
+  ],
+  "chargingPort": {
+    "closed": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        1.0212875306606293
+      ],
+      [
+        0.0,
+        0.9659258222600822,
+        -0.25881906676255007,
+        1.1847045421600342
+      ],
+      [
+        0.0,
+        0.25881906676255007,
+        0.9659258222600822,
+        -0.8981786370277405
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "opened": [
+      [
+        0.5000000000000001,
+        0.224143886800149,
+        0.8365163002486036,
+        1.0212875306606293
+      ],
+      [
+        0.0,
+        0.9659258222600822,
+        -0.25881906676255007,
+        1.1847045421600342
+      ],
+      [
+        -0.8660254037844386,
+        0.12940953338127506,
+        0.4829629111300412,
+        -0.8981786370277405
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  }
+}

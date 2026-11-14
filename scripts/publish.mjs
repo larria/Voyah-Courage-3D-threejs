@@ -5,7 +5,7 @@ import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const urls = {
+const allUrls = {
   gitee: 'https://gitee.com/larria/Voyah-Courage-3D-ThreeJS.git',
   github: 'https://github.com/larria/Voyah-Courage-3D-threejs.git',
 };
@@ -24,6 +24,9 @@ function assertClean() {
 }
 
 try {
+  const args = process.argv.slice(2);
+  if (args.some(arg => arg !== '--github-only')) throw new Error('Supported option: --github-only');
+  const urls = args.includes('--github-only') ? { github: allUrls.github } : allUrls;
   const [major, minor] = process.versions.node.split('.').map(Number);
   if (!((major === 20 && minor >= 19) || (major === 22 && minor >= 12) || major > 22)) throw new Error('Vite 8 requires Node 20.19+ or 22.12+.');
   if (git(['rev-parse', '--show-toplevel'], root, true) !== root) throw new Error('The project root must be the Git repository root.');
@@ -72,6 +75,7 @@ try {
     cpSync(join(dist, entry), join(pages, entry), { recursive: true });
   }
   writeFileSync(join(pages, '.nojekyll'), '');
+  writeFileSync(join(pages, 'source-revision.json'), JSON.stringify({ sourceCommit: sha }) + '\n');
   // Use the source repo identity, including repo-local Git configuration.
   for (const key of ['user.name', 'user.email']) git(['config', key, git(['config', '--get', key], root, true)], pages);
   git(['add', '--all'], pages);
@@ -80,14 +84,17 @@ try {
   } else {
     console.log('Pages output unchanged; preserving existing deployment commit.');
   }
-  for (const remote of ['gitee', 'github']) {
+  for (const remote of Object.keys(urls)) {
     git(['push', remote, `${sha}:refs/heads/main`]);
     completed.push(`${remote} main (${sha})`);
     console.log(`SUCCESS: ${completed.at(-1)}`);
+    if (git(['ls-remote', remote, 'refs/heads/main'], root, true).split(/\s/)[0] !== sha) throw new Error(`${remote} main verification failed after push.`);
   }
   git(['push', 'origin', 'HEAD:refs/heads/gh-pages'], pages);
   completed.push('github gh-pages');
   console.log('SUCCESS: github gh-pages');
+  const deploySha = git(['rev-parse', 'HEAD'], pages, true);
+  if (git(['ls-remote', 'origin', 'refs/heads/gh-pages'], pages, true).split(/\s/)[0] !== deploySha) throw new Error('GitHub Pages branch verification failed after push.');
   console.log('Publish complete: https://larria.github.io/Voyah-Courage-3D-threejs/');
 } catch (error) {
   console.error(`Publish failed: ${error.message}`);
